@@ -16,7 +16,7 @@ class SpaceObject:
         self.Fy = 0
         self.orbit_points = []
         self.orbit_line = None
-    def calculate_force(self, objects):
+    def _calculate_force_internal(self, objects):
         """Вычисляет силу, действующую на тело.
 
             Параметры:
@@ -36,30 +36,17 @@ class SpaceObject:
             self.Fx += force * r_x/r
             self.Fy += force * r_y/r
 
-    def move_space_object(self, dt):
-        """Перемещает тело в соответствии с действующей на него силой.
-
-        Параметры:
-
-        **self** — тело, которое нужно переместить.
-        **dt** — шаг по времени
-        """
-
+    def kick(self, c, dt, all_objects, first_time=False):
+        if not first_time:
+            self._calculate_force_internal(all_objects)
         ax = self.Fx / self.m
-        self.x += self.Vx * dt + (ax * dt ** 2) / 2
-
         ay = self.Fy / self.m
-        self.y += self.Vy * dt + (ay * dt ** 2) / 2
+        self.Vx += ax * c * dt
+        self.Vy += ay * c * dt
 
-        return ax, ay
-
-    def calculate_verlet_speed(self, dt, old_ax, old_ay):
-        """"""
-        new_ax = self.Fx / self.m
-        new_ay = self.Fy / self.m
-
-        self.Vx += dt * (new_ax + old_ax) / 2
-        self.Vy += dt * (new_ay + old_ay) / 2
+    def drift(self, d, dt):
+        self.x += self.Vx * d * dt
+        self.y += self.Vy * d * dt
 
     def create_object_image(self, space, x, y):
         """Создаёт отображаемый объект звезды.
