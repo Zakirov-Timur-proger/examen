@@ -1,5 +1,4 @@
 import tkinter
-import copy
 from tkinter.filedialog import *
 from parse_data import *
 
@@ -26,13 +25,15 @@ class Window:
         self.time_speed = None
         self.start_button = None
         self.parser = Parser()
-        self.show_orbits = True
+        self.show_orbits = False
 
         self.theta = 1 / (2 - 2**(1/3))
         self.FR_C1 = self.theta / 2
         self.FR_C2 = (1-self.theta) / 2
         self.FR_D1 = self.theta
         self.FR_D2 = 1-2*self.theta
+
+        self.camera_target = None
 
     def scale_x(self, x):
         return int((x - self.camera_x) * self.scale_factor) + self.window_width // 2
@@ -49,6 +50,7 @@ class Window:
         self.scale_factor /= 1.5
 
     def start_pan(self, event):
+        if self.camera_target is not None: return
         self.space.focus_set()
         self.pan_start_mouse_x = event.x
         self.pan_start_mouse_y = event.y
@@ -57,6 +59,7 @@ class Window:
         self.pan_start_camera_y = self.camera_y
 
     def pan_view(self, event):
+        if self.camera_target is not None: return
         dx = event.x - self.pan_start_mouse_x
         dy = event.y - self.pan_start_mouse_y
 
@@ -78,6 +81,37 @@ class Window:
         self.camera_y = 0.0
         self.scale_factor = self.default_scale_factor
         print("View has been reset.")
+
+    def select_camera_target(self, event):
+        mouse_x, mouse_y = event.x, event.y
+        physical_x = (mouse_x - self.window_width / 2) / self.scale_factor + self.camera_x
+        physical_y = -(mouse_y - self.window_height / 2) / self.scale_factor + self.camera_y
+        target_found = None
+
+        for obj in reversed(self.space_objects):
+            zoom_ratio = self.scale_factor / self.default_scale_factor
+            try:
+                display_radius_px = obj.r * (zoom_ratio ** 0.5)
+            except ValueError:
+                display_radius_px = obj.r
+
+            display_radius_px = max(2, min(display_radius_px, 50))
+
+            if self.scale_factor == 0: continue
+            physical_radius = display_radius_px / self.scale_factor
+
+            distance_sq = (obj.x - physical_x) ** 2 + (obj.y - physical_y) ** 2
+            if distance_sq < physical_radius ** 2:
+                target_found = obj
+                break
+        self.camera_target = target_found
+        if self.camera_target:
+            print(f"Камера привязана к {self.camera_target.name}")
+        else:
+            print("Камера отвязана. Свободный режим.")
+
+    def drop_camera_target(self):
+        self.camera_target = None
 
     def toggle_orbits_visibility(self):
         """Переключает видимость орбит и обновляет их на холсте."""
@@ -104,6 +138,10 @@ class Window:
         print('Scale factor:', self.scale_factor)
 
     def execution(self):
+        if self.camera_target is not None:
+            self.camera_x = self.camera_target.x
+            self.camera_y = self.camera_target.y
+
         for obj in self.space_objects:
             obj.kick(self.FR_C1, self.time_step.get(), self.space_objects, True)
 
@@ -255,6 +293,9 @@ def main():
     window.space.bind("<Button-1>", window.start_pan)
     window.space.bind("<B1-Motion>", window.pan_view)
     window.space.bind("<ButtonRelease-1>", lambda event: window.stop_pan())
+
+    window.space.bind("<Double-Button-1>", window.select_camera_target)
+    window.space.bind("<Escape>", lambda event: window.drop_camera_target())
 
     reset_view_button = tkinter.Button(frame, text="Reset View", command=window.reset_view)
     reset_view_button.pack(side=tkinter.LEFT)
