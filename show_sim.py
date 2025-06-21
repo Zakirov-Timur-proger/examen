@@ -1,4 +1,5 @@
 import tkinter
+import copy
 from tkinter.filedialog import *
 from parse_data import *
 
@@ -26,6 +27,12 @@ class Window:
         self.start_button = None
         self.parser = Parser()
         self.show_orbits = True
+
+        self.theta = 1 / (2 - 2**(1/3))
+        self.FR_C1 = self.theta / 2
+        self.FR_C2 = (1-self.theta) / 2
+        self.FR_D1 = self.theta
+        self.FR_D2 = 1-2*self.theta
 
     def scale_x(self, x):
         return int((x - self.camera_x) * self.scale_factor) + self.window_width // 2
@@ -97,18 +104,45 @@ class Window:
         print('Scale factor:', self.scale_factor)
 
     def execution(self):
-
-        old_accelerations = {}
+        new_speeds = {}
+        new_speeds.clear()
         for obj in self.space_objects:
-            old_ax, old_ay = obj.move_space_object(self.time_step.get())
-            old_accelerations[obj] = (old_ax, old_ay)
+            deltas = obj.kick(self.FR_C1, self.time_step.get(), self.space_objects, True)
+            new_speeds[obj] = deltas
 
-        for obj in self.space_objects:
-            obj.calculate_force(self.space_objects)
+        for obj in new_speeds:
+            obj.Vx += new_speeds[obj][0]
+            obj.Vy += new_speeds[obj][1]
+            obj.drift(self.FR_D1, self.time_step.get())
 
+        new_speeds.clear()
         for obj in self.space_objects:
-            old_ax, old_ay = old_accelerations[obj]
-            obj.calculate_verlet_speed(self.time_step.get(), old_ax, old_ay)
+            deltas = obj.kick(self.FR_C2, self.time_step.get(), self.space_objects)
+            new_speeds[obj] = deltas
+
+        for obj in new_speeds:
+            obj.Vx += new_speeds[obj][0]
+            obj.Vy += new_speeds[obj][1]
+            obj.drift(self.FR_D2, self.time_step.get())
+
+        new_speeds.clear()
+        for obj in self.space_objects:
+            deltas = obj.kick(self.FR_C2, self.time_step.get(), self.space_objects)
+            new_speeds[obj] = deltas
+
+        for obj in new_speeds:
+            obj.Vx += new_speeds[obj][0]
+            obj.Vy += new_speeds[obj][1]
+            obj.drift(self.FR_D1, self.time_step.get())
+
+        new_speeds.clear()
+        for obj in self.space_objects:
+            deltas = obj.kick(self.FR_C1, self.time_step.get(), self.space_objects)
+            new_speeds[obj] = deltas
+
+        for obj in new_speeds:
+            obj.Vx += new_speeds[obj][0]
+            obj.Vy += new_speeds[obj][1]
 
         if self.frame_counter % 10 == 0:  # Сбор статистики каждый 10 кадр для оптимизации
             ke, pe, te = calculate_system_energy(self.space_objects)
@@ -190,6 +224,11 @@ class Window:
         if not in_filename:
             return
         self.space_objects = self.parser.read_space_objects_data_from_file(in_filename)
+
+        print("Инициализация начальных сил...")
+        for obj in self.space_objects:
+            obj._calculate_force_internal(self.space_objects)
+
         max_distance = max([max(abs(obj.x), abs(obj.y)) for obj in self.space_objects])
         self.calculate_scale_factor(max_distance)
 
