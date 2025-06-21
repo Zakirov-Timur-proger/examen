@@ -104,45 +104,26 @@ class Window:
         print('Scale factor:', self.scale_factor)
 
     def execution(self):
-        new_speeds = {}
-        new_speeds.clear()
         for obj in self.space_objects:
-            deltas = obj.kick(self.FR_C1, self.time_step.get(), self.space_objects, True)
-            new_speeds[obj] = deltas
+            obj.kick(self.FR_C1, self.time_step.get(), self.space_objects, True)
 
-        for obj in new_speeds:
-            obj.Vx += new_speeds[obj][0]
-            obj.Vy += new_speeds[obj][1]
+        for obj in self.space_objects:
             obj.drift(self.FR_D1, self.time_step.get())
 
-        new_speeds.clear()
         for obj in self.space_objects:
-            deltas = obj.kick(self.FR_C2, self.time_step.get(), self.space_objects)
-            new_speeds[obj] = deltas
+            obj.kick(self.FR_C2, self.time_step.get(), self.space_objects)
 
-        for obj in new_speeds:
-            obj.Vx += new_speeds[obj][0]
-            obj.Vy += new_speeds[obj][1]
+        for obj in self.space_objects:
             obj.drift(self.FR_D2, self.time_step.get())
 
-        new_speeds.clear()
         for obj in self.space_objects:
-            deltas = obj.kick(self.FR_C2, self.time_step.get(), self.space_objects)
-            new_speeds[obj] = deltas
+            obj.kick(self.FR_C2, self.time_step.get(), self.space_objects)
 
-        for obj in new_speeds:
-            obj.Vx += new_speeds[obj][0]
-            obj.Vy += new_speeds[obj][1]
+        for obj in self.space_objects:
             obj.drift(self.FR_D1, self.time_step.get())
 
-        new_speeds.clear()
         for obj in self.space_objects:
-            deltas = obj.kick(self.FR_C1, self.time_step.get(), self.space_objects)
-            new_speeds[obj] = deltas
-
-        for obj in new_speeds:
-            obj.Vx += new_speeds[obj][0]
-            obj.Vy += new_speeds[obj][1]
+            obj.kick(self.FR_C1, self.time_step.get(), self.space_objects)
 
         if self.frame_counter % 10 == 0:  # Сбор статистики каждый 10 кадр для оптимизации
             ke, pe, te = calculate_system_energy(self.space_objects)

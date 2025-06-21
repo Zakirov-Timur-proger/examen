@@ -41,10 +41,8 @@ class SpaceObject:
             self._calculate_force_internal(all_objects)
         ax = self.Fx / self.m
         ay = self.Fy / self.m
-        dvx = ax * c * dt
-        dvy = ay * c * dt
-
-        return dvx, dvy
+        self.Vx += ax * c * dt
+        self.Vy += ay * c * dt
 
     def drift(self, d, dt):
         self.x += self.Vx * d * dt
